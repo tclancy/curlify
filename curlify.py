@@ -17,7 +17,7 @@ def to_curl(request, compressed=False, verify=True, pretty=False):
     command = []
 
     inferred_method = 'GET'
-    if request.body is not None:
+    if hasattr(request, "body") is not None or hasattr(request, "json") is not None:
         inferred_method = 'POST'
     if request.method != inferred_method:
         command.append('-X ' + quote(request.method))
@@ -30,7 +30,7 @@ def to_curl(request, compressed=False, verify=True, pretty=False):
             # empty header
             command.append('-H ' + quote('{0};'.format(k)))
 
-    if request.body:
+    if hasattr(request, "body"):
         body = request.body
         if isinstance(body, bytes):
             body = body.decode('utf-8')
@@ -39,13 +39,18 @@ def to_curl(request, compressed=False, verify=True, pretty=False):
             data_type = '--data-raw'
         command.append(data_type + ' ' + quote(body))
 
+    if hasattr(request, "json"):
+        import json
+        command.append('-H ' + quote('Content-Type: application/json'))
+        command.append('-d ' + quote(json.dumps(request.json)))
+
     if compressed:
         command.append('--compressed')
 
     if not verify:
         command.append('--insecure')
 
-    command.append(quote(request.url))
+    command.append(quote(str(request.url)))
 
     joiner = ' '
     if pretty and len(command) > 3:
